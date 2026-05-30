@@ -8,9 +8,8 @@ import type { RetrievedChunk } from "@/lib/ai/rag";
  * 챗봇이 어떤 chunk를 참고해 답했는지 학회원이 눈으로 확인할 수 있어야
  * RAG가 제대로 동작하는지 디버깅하기 쉽습니다.
  *
- * TODO SESSION 2-8:
- *   - chat 응답이 끝난 뒤 마지막 사용자 질문으로 /api/search 호출.
- *   - 받은 chunks를 카드 형태로 렌더 (content + similarity).
+ * TODO SESSION 2-8: (구현 완료) 받은 chunks를 카드로 렌더.
+ *   /api/search 호출은 Chat.tsx가 답변 완료 후 수행해서 chunks를 내려준다.
  */
 export function SourcePanel({ chunks }: { chunks: RetrievedChunk[] }) {
   if (!chunks || chunks.length === 0) {

@@ -10,29 +10,32 @@
  *
  * ⚠️ dimension은 supabase/schema.sql의 `vector(N)`과 반드시 일치시켜야 합니다.
  *
- * TODO SESSION 2-2:
- *   - @ai-sdk/openai의 embed() 또는 embedMany()를 사용해 embedding 생성.
- *   - import { embed } from "ai";
- *   - import { openai } from "@ai-sdk/openai";
- *   - const { embedding } = await embed({
- *       model: openai.embedding("text-embedding-3-small"),
- *       value: text,
- *     });
- *   - return embedding;
+ * ⚠️ 모델을 바꾸면 supabase/schema.sql의 vector(N) 차원도 같이 바꿔야 합니다.
  *
- * 지금은 build만 통과하도록 빈 배열을 반환합니다.
+ * TODO SESSION 2-2: (구현 완료) embed/embedMany로 OpenAI embedding 생성.
  */
+import { embed, embedMany } from "ai";
+import { openai } from "@ai-sdk/openai";
+
+// schema.sql의 vector(1536)과 일치해야 한다.
+const EMBEDDING_MODEL = "text-embedding-3-small";
+
 export async function createEmbedding(text: string): Promise<number[]> {
-  void text;
-  return [];
+  const { embedding } = await embed({
+    model: openai.embedding(EMBEDDING_MODEL),
+    value: text,
+  });
+  return embedding;
 }
 
 /**
  * 여러 텍스트를 한 번에 embedding (batch 호출, 비용/속도 면에서 유리).
- *
- * TODO SESSION 2-2 (optional):
- *   - embedMany를 써서 한 번에 처리하세요.
  */
 export async function createEmbeddings(texts: string[]): Promise<number[][]> {
-  return texts.map(() => []);
+  if (texts.length === 0) return [];
+  const { embeddings } = await embedMany({
+    model: openai.embedding(EMBEDDING_MODEL),
+    values: texts,
+  });
+  return embeddings;
 }

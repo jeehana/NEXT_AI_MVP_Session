@@ -8,7 +8,10 @@ import { CharacterCard } from "@/components/CharacterCard";
 import { MessageList } from "@/components/MessageList";
 import { MessageInput } from "@/components/MessageInput";
 import { AccessCodeModal } from "@/components/AccessCodeModal";
+import { IngestPanel } from "@/components/IngestPanel";
+import { SourcePanel } from "@/components/SourcePanel";
 import { characterConfig } from "@/lib/ai/prompts";
+import type { RetrievedChunk } from "@/lib/ai/rag";
 
 /**
  * 챗봇 메인 화면.
@@ -39,6 +42,11 @@ export function Chat() {
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
 
+  // 마지막 답변에 사용된(참고된) RAG chunk들. SourcePanel 디버깅용.
+  const [sources, setSources] = useState<RetrievedChunk[]>([]);
+  // 직전에 보낸 질문 텍스트. 답변이 끝나면 이 질문으로 /api/search 를 호출한다.
+  const [lastQuery, setLastQuery] = useState<string | null>(null);
+
   // useChat은 마운트 시점의 transport를 잡아두기 때문에, accessCode가 바뀐다고
   // transport를 새로 만들어도 갈아끼지 않는다. 그래서 transport에는 api만 넣고,
   // accessCode는 매 sendMessage 호출 시 options.body로 전달한다.
@@ -55,9 +63,31 @@ export function Chat() {
   useEffect(() => {
     if (accessCode && pendingMessage) {
       sendMessage({ text: pendingMessage }, { body: { accessCode } });
+      setLastQuery(pendingMessage);
       setPendingMessage(null);
     }
   }, [accessCode, pendingMessage, sendMessage]);
+
+  // 답변 스트리밍이 끝나면(ready) 직전 질문으로 /api/search를 호출해
+  // "이 답변에 어떤 chunk가 쓰였는지"를 SourcePanel에 보여준다.
+  useEffect(() => {
+    if (status !== "ready" || !lastQuery || !accessCode) return;
+    const query = lastQuery;
+    setLastQuery(null);
+    (async () => {
+      try {
+        const res = await fetch("/api/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query, accessCode }),
+        });
+        const data = await res.json();
+        setSources(res.ok ? (data.chunks ?? []) : []);
+      } catch {
+        setSources([]);
+      }
+    })();
+  }, [status, lastQuery, accessCode]);
 
   function handleSend(text: string) {
     if (!accessCode) {
@@ -67,6 +97,7 @@ export function Chat() {
       return;
     }
     sendMessage({ text }, { body: { accessCode } });
+    setLastQuery(text);
   }
 
   function handleClear() {
@@ -114,6 +145,15 @@ export function Chat() {
             잠금
           </button>
         </div>
+
+        {/* RAG: 자기소개 학습 패널 + 마지막 답변에 쓰인 chunk 표시.
+            accessCode가 있어야 /api/ingest·/api/search 가 통과하므로 그때만 노출. */}
+        {accessCode ? (
+          <>
+            <IngestPanel accessCode={accessCode} />
+            <SourcePanel chunks={sources} />
+          </>
+        ) : null}
       </div>
 
       {/* 우측: 메시지 영역 + 입력창 */}

@@ -41,13 +41,16 @@ export async function POST(req: Request) {
     return Response.json({ error: "query가 비어 있습니다." }, { status: 400 });
   }
 
-  // TODO SESSION 2-8:
-  //   const { retrieveRelevantChunks } = await import("@/lib/ai/rag");
-  //   const chunks = await retrieveRelevantChunks(body.query);
-  //   return Response.json({ chunks });
-
-  return Response.json(
-    { error: "이 endpoint는 아직 구현되지 않았습니다. (Session 2에서 채워주세요)" },
-    { status: 501 },
-  );
+  // TODO SESSION 2-8: (구현 완료) 유사 chunk 검색 결과를 그대로 반환 (UI 확인용).
+  try {
+    const { retrieveRelevantChunks } = await import("@/lib/ai/rag");
+    const chunks = await retrieveRelevantChunks(body.query);
+    return Response.json({ chunks });
+  } catch (err) {
+    console.error("[/api/search] 검색 실패:", err);
+    return Response.json(
+      { error: "검색 중 오류가 발생했습니다. (서버 로그 확인)" },
+      { status: 500 },
+    );
+  }
 }

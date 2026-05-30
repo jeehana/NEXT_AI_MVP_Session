@@ -14,9 +14,24 @@
  *   - 인접 chunk 간 overlap(예: 100자)을 줘서 문맥이 끊기지 않게 하세요.
  *   - 공백/줄바꿈 기준으로 자르는 게 단순합니다. (paragraph 단위도 OK)
  *
- * 지금은 build만 통과하도록 통째 1개 chunk로 반환합니다.
+ *
+ * TODO SESSION 2-1: (구현 완료) 500자 chunk + 100자 overlap으로 분할.
  */
-export function chunkText(text: string): string[] {
-  if (!text) return [];
-  return [text];
+export function chunkText(
+  text: string,
+  chunkSize: number = 500,
+  overlap: number = 100,
+): string[] {
+  const clean = text.trim();
+  if (!clean) return [];
+  if (clean.length <= chunkSize) return [clean];
+
+  const chunks: string[] = [];
+  // step만큼 시작점을 옮기되, overlap만큼 겹쳐서 문맥이 끊기지 않게 한다.
+  const step = chunkSize - overlap;
+  for (let start = 0; start < clean.length; start += step) {
+    chunks.push(clean.slice(start, start + chunkSize));
+    if (start + chunkSize >= clean.length) break;
+  }
+  return chunks;
 }

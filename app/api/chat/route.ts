@@ -1,6 +1,7 @@
 import { streamText, convertToModelMessages, type UIMessage } from "ai";
 import { chatModel } from "@/lib/ai/model";
 import { buildSystemPrompt } from "@/lib/ai/prompts";
+import { retrieveRelevantChunks, buildRagContext } from "@/lib/ai/rag";
 import {
   MAX_INPUT_CHARS,
   MAX_OUTPUT_TOKENS,
@@ -100,16 +101,22 @@ export async function POST(req: Request) {
   // TODO SESSION 3-4: classifyQuestion(lastText)으로 "rag" | "web" | "direct" 분기.
   //   import { classifyQuestion } from "@/lib/ai/router";
   //
-  // TODO SESSION 2-6: rag 분기일 때, retrieveRelevantChunks → buildRagContext로
-  //   system prompt에 자기소개 chunk를 추가하세요.
-  //   import { retrieveRelevantChunks, buildRagContext } from "@/lib/ai/rag";
-  //
   // TODO SESSION 3-4 (web 분기): searchWeb → buildWebContext로
   //   system prompt에 검색 결과를 추가하고 출처 URL을 인용하라고 안내하세요.
   //   import { searchWeb, buildWebContext } from "@/lib/tavily/search";
-  //
-  // 지금은 Session 1 단계라 system prompt만 사용한다.
-  const systemPrompt = buildSystemPrompt();
+  let systemPrompt = buildSystemPrompt();
+
+  // TODO SESSION 2-6: 질문과 유사한 자기소개 chunk를 검색해 system prompt에 덧붙인다.
+  //   검색/임베딩이 실패해도 챗봇 자체는 동작해야 하므로 try/catch로 감싼다.
+  try {
+    const chunks = await retrieveRelevantChunks(lastText);
+    const ragContext = buildRagContext(chunks);
+    if (ragContext) {
+      systemPrompt = `${systemPrompt}\n\n${ragContext}`;
+    }
+  } catch (err) {
+    console.error("[/api/chat] RAG 검색 실패 (RAG 없이 진행):", err);
+  }
 
   // ---------- 6. 모델 호출 ----------
   try {

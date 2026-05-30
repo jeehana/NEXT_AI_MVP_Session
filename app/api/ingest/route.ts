@@ -46,13 +46,27 @@ export async function POST(req: Request) {
     );
   }
 
-  // TODO SESSION 2-7:
-  //   const { ingestDocument } = await import("@/lib/ai/rag");
-  //   await ingestDocument(body.text);
-  //   return Response.json({ ok: true });
+  // 큰 문서가 들어오면 embedding 비용이 폭증하므로 상한을 둔다.
+  const MAX_INGEST_CHARS = 30000;
+  if (body.text.length > MAX_INGEST_CHARS) {
+    return Response.json(
+      { error: `문서가 너무 깁니다. ${MAX_INGEST_CHARS}자 이하로 나눠서 올려주세요.` },
+      { status: 400 },
+    );
+  }
 
-  return Response.json(
-    { error: "이 endpoint는 아직 구현되지 않았습니다. (Session 2에서 채워주세요)" },
-    { status: 501 },
-  );
+  // TODO SESSION 2-7: (구현 완료) ingestDocument 호출.
+  //   동적 import를 쓰는 이유: service role 키를 쓰는 무거운 모듈이
+  //   인증 통과 이후에만 로드되도록 (클라이언트 번들 오염 방지 + 초기 로드 최적화).
+  try {
+    const { ingestDocument } = await import("@/lib/ai/rag");
+    await ingestDocument(body.text);
+    return Response.json({ ok: true });
+  } catch (err) {
+    console.error("[/api/ingest] ingest 실패:", err);
+    return Response.json(
+      { error: "문서 저장 중 오류가 발생했습니다. (서버 로그 확인)" },
+      { status: 500 },
+    );
+  }
 }
